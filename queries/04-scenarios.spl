@@ -1,0 +1,3 @@
+index=lab_windows_auth sourcetype="lab:windows:auth:json" synthetic=true run_id="lab-auth-20261008"
+| stats count AS events count(eval(EventCode=4625)) AS failures count(eval(EventCode=4624)) AS successes BY scenario_id
+| sort scenario_id

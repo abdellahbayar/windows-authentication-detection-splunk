@@ -1,0 +1,77 @@
+{
+  "synthetic": true,
+  "splunk_execution_verified": false,
+  "run_id": "lab-auth-20261008",
+  "events": 55,
+  "failures": 46,
+  "successes": 9,
+  "expected_detections": 2,
+  "by_scenario": {
+    "S01": 6,
+    "S02": 2,
+    "S03": 6,
+    "S04": 6,
+    "S05": 6,
+    "S06": 6,
+    "S07": 6,
+    "S08": 6,
+    "S09": 5,
+    "S10": 6
+  },
+  "expected_positive_scenarios": [
+    "S01",
+    "S08"
+  ],
+  "scenarios": [
+    {
+      "id": "S01",
+      "description": "Five failures, then success",
+      "expected_alert": true
+    },
+    {
+      "id": "S02",
+      "description": "One mistyped password, then success",
+      "expected_alert": false
+    },
+    {
+      "id": "S03",
+      "description": "Success precedes the failures",
+      "expected_alert": false
+    },
+    {
+      "id": "S04",
+      "description": "Success belongs to another account",
+      "expected_alert": false
+    },
+    {
+      "id": "S05",
+      "description": "Five failures spread beyond five minutes",
+      "expected_alert": false
+    },
+    {
+      "id": "S06",
+      "description": "Success has another source address",
+      "expected_alert": false
+    },
+    {
+      "id": "S07",
+      "description": "Success has another logon type",
+      "expected_alert": false
+    },
+    {
+      "id": "S08",
+      "description": "Five failures, success after 280 seconds",
+      "expected_alert": true
+    },
+    {
+      "id": "S09",
+      "description": "Unknown username, no success",
+      "expected_alert": false
+    },
+    {
+      "id": "S10",
+      "description": "Success belongs to another computer",
+      "expected_alert": false
+    }
+  ]
+}

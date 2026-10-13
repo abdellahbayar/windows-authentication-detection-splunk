@@ -1,0 +1,3 @@
+index=lab_windows_auth sourcetype="lab:windows:auth:json" synthetic=true run_id="lab-auth-20261008" scenario_id=S01
+| sort 0 +_time +EventRecordID
+| table _time EventCode TargetUserName SubjectUserName Computer SourceIp LogonType SubStatus EventRecordID

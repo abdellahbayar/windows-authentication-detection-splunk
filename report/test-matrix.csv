@@ -1,0 +1,11 @@
+scenario_id,description,expected_matches,reference_matches,splunk_actual_matches
+S01,"Five failures, then success",1,1,NOT_EXECUTED
+S02,"One mistyped password, then success",0,0,NOT_EXECUTED
+S03,Success precedes the failures,0,0,NOT_EXECUTED
+S04,Success belongs to another account,0,0,NOT_EXECUTED
+S05,Five failures spread beyond five minutes,0,0,NOT_EXECUTED
+S06,Success has another source address,0,0,NOT_EXECUTED
+S07,Success has another logon type,0,0,NOT_EXECUTED
+S08,"Five failures, success after 280 seconds",1,1,NOT_EXECUTED
+S09,"Unknown username, no success",0,0,NOT_EXECUTED
+S10,Success belongs to another computer,0,0,NOT_EXECUTED

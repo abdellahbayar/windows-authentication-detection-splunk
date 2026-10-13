@@ -1,0 +1,7 @@
+{
+  "pageErrors": [],
+  "filter": "PASS",
+  "csvDownload": "PASS",
+  "mobileOverflow": false,
+  "scope": "Local demonstrator, not Splunk"
+}

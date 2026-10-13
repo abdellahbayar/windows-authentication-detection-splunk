@@ -1,0 +1,3 @@
+index=lab_windows_auth sourcetype="lab:windows:auth:json" synthetic=true run_id="lab-auth-20261008"
+| eval missing_key=if(isnull(Computer) OR isnull(TargetUserName) OR isnull(TargetDomainName) OR isnull(SourceIp) OR SourceIp="-" OR isnull(LogonType),1,0)
+| stats count AS events sum(missing_key) AS events_missing_key dc(run_id) AS runs

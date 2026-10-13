@@ -1,0 +1,278 @@
+[
+  {
+    "title": "01 / Project overview",
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB",
+    "screen": "architecture",
+    "paragraphs": [
+      "This project explores Windows authentication detection using Splunk, a reproducible dataset and a rolling time window. The package includes SPL searches, an installable app, a dashboard, a scheduled alert and an investigation report.",
+      "The dataset contains 55 synthetic authentication records across 10 controlled scenarios. Machine and account names follow the existing lab environment. The data and Python reference model have passed offline checks; the SPL searches and scheduled alert still require validation in Splunk."
+    ],
+    "bullets": [
+      "Detection objective: at least five failed authentications before a successful logon within five minutes.",
+      "Correlation keys: computer, target domain, target account, source address, logon type and test run.",
+      "Expected outcome: two matches, scenarios S01 and S08.",
+      "Figures show the local illustrative preview. Original Ubuntu terminal captures document environment preparation."
+    ]
+  },
+  {
+    "title": "02 / Environment and data flow",
+    "screen": "architecture",
+    "paragraphs": [
+      "The main workflow starts with generate_data.py, which creates Windows-like JSON records. Splunk on soc-mail-lab reads them through a monitor input and indexes them in lab_windows_auth. This synthetic-data workflow does not require a Universal Forwarder or generate actual Windows logons.",
+      "DESKTOP-N7PEBGK, LabAdmin and LabUser match the documented lab names. WIN-LAB-02 is an invented second host used for a negative test. 192.0.2.25 is an example address; ::1 represents a local source. The Ubuntu address is used for SSH and Splunk Web, not as the source of the Windows authentication records."
+    ],
+    "bullets": [
+      "Ubuntu server: soc-mail-lab / labadmin / Ubuntu 24.04.5 LTS.",
+      "Observed resources: 8 GB RAM, 4 vCPU and approximately 30 GB free disk space.",
+      "Last observed IP: 192.168.231.161. Check it again with hostname -I.",
+      "Splunk Web uses port 8000. SPL is the search language used for the queries."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  },
+  {
+    "title": "03 / Prepare the Ubuntu server",
+    "image": "resources-real.png",
+    "paragraphs": [
+      "Use the Ubuntu lab VM in Hyper-V. To recreate it, install Ubuntu Server 24.04 x86_64, enable OpenSSH Server, create labadmin and configure the virtual network. Allocate 8 GB RAM and 4 vCPU for this small exercise. This is an experimental lab configuration, not a production reference specification.",
+      "The original terminal capture below records the Ubuntu preparation on 8 October 2026. From Windows PowerShell, connect with ssh labadmin@192.168.231.161 using the current VM address. If the address changes, update it throughout the commands and browser URLs."
+    ],
+    "code": "cat /etc/os-release\nfree -h\nnproc\nuname -m\nhostname -I\ndf -h /",
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB",
+    "bullets": []
+  },
+  {
+    "title": "04 / Install Splunk Enterprise",
+    "screen": "install",
+    "paragraphs": [
+      "If Splunk is already installed, continue with the web interface check. Otherwise download the Linux amd64 .deb package from the official page. The command below saves the pinned package as splunk-enterprise.deb. The Windows installer is not used on Ubuntu.",
+      "Create the Linux service account only if it does not exist. Install the package, assign the installation directory and start Splunk as the splunk user. At first startup, review the license and accept it if you wish to proceed, then create the application administrator credentials. Keep credentials outside the project files."
+    ],
+    "code": "wget -O splunk-enterprise.deb \"https://download.splunk.com/products/splunk/releases/10.6.0.5/linux/splunk-10.6.0.5-86587d4e3b27-linux-amd64.deb\"\nid splunk || sudo useradd --system --create-home --user-group --shell /bin/bash splunk\nsudo dpkg -i ./splunk-enterprise.deb\nsudo chown -R splunk:splunk /opt/splunk\nsudo -H -u splunk /opt/splunk/bin/splunk start",
+    "bullets": [
+      "Open http://CURRENT_VM_IP:8000 from the Windows host.",
+      "Check Settings > Licensing. The scheduled alert requires a license that supports alerting.",
+      "Run the installation inside the lab VM. Automatic startup is optional for this exercise."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  },
+  {
+    "title": "05 / Install the project app",
+    "screen": "ingestion",
+    "paragraphs": [
+      "Extract the project ZIP on the Windows host and open PowerShell in the extracted project directory. The tar.gz package contains the abdellah_auth_lab app folder, without credentials or Splunk executables. Transfer it to Ubuntu using SCP, then continue in the SSH session.",
+      "Before extracting, check that /opt/splunk/etc/apps/abdellah_auth_lab does not already exist. Preserve any previous installation before replacing it. After extraction and restart, the app creates the dedicated index and monitors authentication.jsonl. Do not also upload the same file through a second input."
+    ],
+    "code": "# Windows PowerShell, in the extracted folder\nscp .\\abdellah_auth_lab.tar.gz labadmin@192.168.231.161:/home/labadmin/\n# Ubuntu, in the SSH session\ntest ! -e /opt/splunk/etc/apps/abdellah_auth_lab\nsudo tar -xzf /home/labadmin/abdellah_auth_lab.tar.gz -C /opt/splunk/etc/apps\nsudo chown -R splunk:splunk /opt/splunk/etc/apps/abdellah_auth_lab\nsudo -H -u splunk /opt/splunk/bin/splunk restart",
+    "bullets": [
+      "If the test command returns a nonzero exit code, stop before extracting the app.",
+      "Open Apps > Abdellah Authentication Lab (Synthetic).",
+      "Menu labels can vary by version; the bundled configuration provides the index, parsing, searches and dashboard."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  },
+  {
+    "title": "06 / Verify data ingestion",
+    "screen": "ingestion",
+    "paragraphs": [
+      "Select All time and use UTC in Splunk preferences to compare timestamps with this guide. The historical fixture is dated 8 October 2026, so a recent-time filter will not find it. Copy queries/01-ingestion.spl into the Search field.",
+      "Expected totals are 55 events, 46 failed logons, 9 successful logons and 55 distinct record IDs. The figure shows the expected output calculated from the fixture. To record the actual Splunk result, capture the search, time filter, run_id and returned counts."
+    ],
+    "code": "index=lab_windows_auth sourcetype=\"lab:windows:auth:json\" synthetic=true run_id=\"lab-auth-20261008\"\n| stats count AS events count(eval(EventCode=4625)) AS failures count(eval(EventCode=4624)) AS successes dc(EventRecordID) AS record_ids",
+    "bullets": [
+      "Index: lab_windows_auth.",
+      "Sourcetype: lab:windows:auth:json, the normalized format defined for this exercise.",
+      "The fixture is not an EVTX export or XmlWinEventLog:Security input."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  },
+  {
+    "title": "07 / Read the authentication events",
+    "screen": "events",
+    "paragraphs": [
+      "Event 4625 records a failed authentication; event 4624 records a successful logon session. TargetUserName identifies the account being authenticated. SubjectUserName identifies the requesting account and must not replace the target account in the correlation.",
+      "In the fixture, SubStatus 0xC000006A represents an incorrect password and 0xC0000064 an unknown username. LogonType 2 represents interactive logon and 3 network logon. SourceIp is the normalized project field corresponding to Windows IpAddress. The JSON records contain only the fields needed for this exercise."
+    ],
+    "code": "index=lab_windows_auth sourcetype=\"lab:windows:auth:json\" synthetic=true run_id=\"lab-auth-20261008\"\n| sort 0 +_time +EventRecordID\n| table _time Computer TargetUserName SubjectUserName EventCode SourceIp LogonType SubStatus EventRecordID scenario_id",
+    "bullets": [
+      "Read the computer, account, record ID, logon type and timestamp together.",
+      "Do not geolocate ::1; it is a loopback address.",
+      "synthetic=true and data_origin identify the generated fixture records."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  },
+  {
+    "title": "08 / Design the detection rule",
+    "screen": "detection",
+    "paragraphs": [
+      "For each successful authentication, count the preceding failures within the previous 300 seconds. The threshold is five. Group by test run, computer, target domain, target account, source address and logon type so that an unrelated success cannot complete the same sequence.",
+      "Remove duplicate records and sort events chronologically before calculating the window. streamstats with current=f excludes the current event from the calculation. Records with missing correlation keys are excluded, so the separate data-quality search should also be reviewed."
+    ],
+    "bullets": [
+      "A fixed bin _time span=5m aggregation is not used: a sequence can cross two fixed time buckets.",
+      "scenario_id is shown for test comparison only; it does not determine whether the rule matches.",
+      "The threshold is an educational choice. Repeated successful events can produce separate candidates with distinct detection IDs."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  },
+  {
+    "title": "09 / Run the SPL detection search",
+    "paragraphs": [
+      "File: queries/03-detection.spl. Search over All time. Two rows are expected, corresponding to S01 and S08. The Python reference model checks the documented rule independently; it does not execute SPL. Compare the actual Splunk search results before marking runtime validation complete.",
+      "sort 0 avoids the default limit on sorted rows. It is appropriate for this small fixture but can be expensive on large datasets. Production searches require a separate performance and capacity assessment."
+    ],
+    "code": "index=lab_windows_auth sourcetype=\"lab:windows:auth:json\" synthetic=true run_id=\"lab-auth-20261008\" (EventCode=4624 OR EventCode=4625)\n| eval EventCode=tonumber(EventCode), LogonType=tonumber(LogonType), target_user=lower(TargetUserName), target_domain=lower(TargetDomainName)\n| where isnotnull(Computer) AND isnotnull(target_user) AND isnotnull(target_domain) AND isnotnull(SourceIp) AND SourceIp!=\"\" AND SourceIp!=\"-\" AND isnotnull(LogonType)\n| dedup run_id Computer EventRecordID\n| sort 0 +_time +EventRecordID\n| streamstats current=f time_window=5m count(eval(EventCode=4625)) AS failures_before_success min(eval(if(EventCode=4625,_time,null()))) AS first_failure BY run_id Computer target_domain target_user SourceIp LogonType\n| where EventCode=4624 AND failures_before_success>=5\n| eval success_epoch=_time, window_seconds=round(_time-first_failure,0), detection_id=run_id.\":\".Computer.\":\".EventRecordID\n| table _time first_failure Computer TargetDomainName TargetUserName SourceIp LogonType failures_before_success window_seconds EventRecordID detection_id scenario_id run_id",
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB",
+    "bullets": []
+  },
+  {
+    "title": "10 / Investigate a positive scenario",
+    "screen": "triage",
+    "paragraphs": [
+      "In S01, LabUser on DESKTOP-N7PEBGK has five failures at 09:00:00, 09:00:20, 09:00:40, 09:01:00 and 09:01:20 UTC. The successful logon occurs at 09:01:40. All six records share source ::1 and LogonType 2. The interval from the first failure is 100 seconds.",
+      "S08 produces the second expected candidate, with a success at 10:49:40 UTC after five failures over 280 seconds. Both sequences satisfy the pattern. Their presence in the generated fixture does not establish a real attack."
+    ],
+    "code": "index=lab_windows_auth sourcetype=\"lab:windows:auth:json\" synthetic=true run_id=\"lab-auth-20261008\" scenario_id=S01\n| sort 0 +_time +EventRecordID\n| table _time EventCode TargetUserName SubjectUserName Computer SourceIp LogonType SubStatus EventRecordID",
+    "bullets": [
+      "Compare detection_id and EventRecordID with data/expected-detections.csv.",
+      "LabAdmin is the requester; LabUser is the authentication target.",
+      "The Ubuntu server address is not the origin of these authentication records."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  },
+  {
+    "title": "11 / Explore the dashboard",
+    "screen": "dashboard",
+    "paragraphs": [
+      "The app includes a Simple XML dashboard with event counts, failed logons, successful logons, detection candidates, a timeline and scenario coverage. Open the dashboard directly from the installed app.",
+      "The Splunk dashboard searches indexed data. The standalone HTML preview displays expected results from the reference model and can be explored without Splunk. The historical dashboard is limited to run lab-auth-20261008 so that later alert tests do not change its totals."
+    ],
+    "bullets": [
+      "Open preview/index.html to explore the standalone demonstration.",
+      "Use the event filter and the CSV download button.",
+      "Save the actual Splunk dashboard capture in evidence/actual-splunk/ after importing the app."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  },
+  {
+    "title": "12 / Validate positive and negative cases",
+    "screen": "validation",
+    "paragraphs": [
+      "Ten scenarios check ordering, threshold and key isolation. S01 and S08 should each return one row. All other scenarios should return none. A rule that merely counts failures and successes in aggregate can incorrectly match S03, where the success occurs first.",
+      "verify_project.py checks the fixture, Python reference model, duplicate handling, threshold, account case, missing keys, domain isolation and XML/configuration structure. verification.json records the offline results separately from Splunk runtime validation."
+    ],
+    "code": "python3 verify_project.py",
+    "bullets": [
+      "Do not add scenario_id as a detection condition to force the expected result.",
+      "Compare the Splunk output with expected-detections.csv.",
+      "Check exact 300-second boundary behavior in Splunk separately; the provided positive cases use 100 and 280 seconds."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  },
+  {
+    "title": "13 / Test a scheduled alert",
+    "screen": "alert",
+    "paragraphs": [
+      "The included alert is initially disabled. Validate the historical detection first, then enable LAB - Live synthetic alert under Settings > Searches, reports and alerts. It runs every minute, searches from -7m@m to -1m@m and triggers when the number of results is greater than zero. Its action is Add to Triggered Alerts.",
+      "From the project directory on Ubuntu, generate a new file containing six synthetic records dated within the previous two minutes. Copy it into the monitored app directory. The generator does not perform Windows authentication. Use a new filename for each test and check that the success timestamp falls within the next scheduled job window."
+    ],
+    "code": "python3 generate_data.py --live-positive authentication-live-01.jsonl\nsudo install -o splunk -g splunk -m 640 authentication-live-01.jsonl /opt/splunk/etc/apps/abdellah_auth_lab/data/authentication-live-01.jsonl",
+    "bullets": [
+      "Wait approximately 2-3 minutes, then inspect Triggered Alerts and the search job.",
+      "Suppression: ten minutes per detection_id. No email, webhook or containment action is configured.",
+      "The schedule assumes ingestion latency below one minute. Real telemetry needs a delay, overlap and deduplication strategy appropriate to its arrival times.",
+      "Disable the alert after testing if it is no longer needed."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  },
+  {
+    "title": "14 / Document the investigation",
+    "screen": "triage",
+    "paragraphs": [
+      "Observation: five authentication failures precede a success for the same correlation key. Possible explanations include repeated typing errors, an administrative test or unauthorized attempts. The records alone do not identify the person or establish intent.",
+      "Proposed checks: confirm the operator and test context; correlate process and session details; review post-logon activity; look for attempts against other accounts or hosts; verify event completeness. Loopback is consistent with a local test and does not support attribution to a remote attacker.",
+      "In this synthetic case, the generator explains the entire sequence. The pattern is present, but no real incident is demonstrated. The analysis report separates observations, interpretations, expected results and limitations."
+    ],
+    "bullets": [
+      "This educational rule does not automatically block accounts.",
+      "For a real critical notification, follow established escalation, evidence preservation and authorized containment procedures.",
+      "The package includes report/analysis.md and report/actual-validation-template.md."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  },
+  {
+    "title": "15 / Extend the lab to real Windows events",
+    "paragraphs": [
+      "This optional extension has not been executed. optional/export_lab_events.ps1 reads only events 4624 and 4625 from DESKTOP-N7PEBGK, selects the documented lab accounts and normalizes the fields into the project JSON format. It does not create accounts, change audit policy or generate logon attempts.",
+      "Inside the Windows VM, open PowerShell with permission to read the Security log and run the script over the interval of the lab test. Preserve the original EVTX separately. Transfer the JSONL to Ubuntu and copy it into the monitored app directory. Real records use synthetic=false and a separate run_id.",
+      "Search using synthetic=false and the exported run_id. One failed attempt followed by a success should not trigger a threshold of five. A Universal Forwarder can be added later after checking compatibility and native-field mappings."
+    ],
+    "code": ".\\optional\\export_lab_events.ps1 -StartTime '2026-10-01T13:55:00' -EndTime '2026-10-01T14:35:00' -OutputPath '.\\windows-real.jsonl'",
+    "bullets": [
+      "The example command uses the VM local time; the exported JSON timestamps are UTC.",
+      "Missing fields remain null rather than being invented to satisfy the rule.",
+      "The bundled dashboard intentionally focuses on the synthetic fixture."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  },
+  {
+    "title": "16 / Troubleshoot and complete validation",
+    "paragraphs": [
+      "No events: check the index, sourcetype, All time selection, monitor path and permissions. Inspect the effective configuration with btool. Duplicate totals can result from importing the same file through two inputs; use record IDs to investigate. The detection deduplicates records, while raw dashboard counts reveal the ingestion issue.",
+      "Web interface unavailable: check hostname -I, Splunk status and port 8000. Update the URL if the VM address changes. For a missing alert, check the license, enabled status, timestamps, delay and scheduled job. Historical records will not appear in a search limited to the previous few minutes."
+    ],
+    "code": "sudo -H -u splunk /opt/splunk/bin/splunk status\nsudo -H -u splunk /opt/splunk/bin/splunk btool inputs list --debug\nsudo -H -u splunk /opt/splunk/bin/splunk btool props list lab:windows:auth:json --debug\nss -lnt | grep ':8000'",
+    "bullets": [
+      "Save actual UI captures and exported results in evidence/actual-splunk/.",
+      "Complete actual-validation-template.md with the observed results and remaining issues.",
+      "Keep the distinction between a synthetic-data lab and a runtime-validated Splunk deployment."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  },
+  {
+    "title": "17 / Project files and references",
+    "paragraphs": [
+      "README.md is the starting point and GUIDE.md contains copyable steps. data/ includes JSONL, CSV, expected results and a manifest. queries/ contains eight searches. app/ contains the importable dashboard and configuration; abdellah_auth_lab.tar.gz is the installation package.",
+      "preview/ contains the interactive demonstration. screenshots/ includes illustrative captures and original Ubuntu prerequisites. report/ separates the synthetic analysis from actual validation. generate_data.py creates the fixture or a current-time alert test; verify_project.py performs the offline checks."
+    ],
+    "links": [
+      [
+        "Splunk Enterprise download",
+        "https://www.splunk.com/en_us/download/splunk-enterprise.html"
+      ],
+      [
+        "Linux installation",
+        "https://help.splunk.com/en/splunk-enterprise/administer/install-and-upgrade/10.6/install-splunk-enterprise-on-linux-or-macos/install-on-linux"
+      ],
+      [
+        "Run Splunk as a non-root user",
+        "https://help.splunk.com/en/splunk-enterprise/administer/install-and-upgrade/10.6/install-splunk-enterprise-on-linux-or-macos/run-splunk-enterprise-as-a-different-or-non-root-user"
+      ],
+      [
+        "SPL streamstats reference",
+        "https://help.splunk.com/en/splunk-enterprise/spl-search-reference/9.3/search-commands/streamstats"
+      ],
+      [
+        "props.conf reference",
+        "https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/9.3/configuration-file-reference/9.3.0-configuration-file-reference/props.conf"
+      ],
+      [
+        "savedsearches.conf reference",
+        "https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/10.2/configuration-file-reference/10.2.8-configuration-file-reference/savedsearches.conf"
+      ],
+      [
+        "Microsoft: event 4624",
+        "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4624"
+      ],
+      [
+        "Microsoft: event 4625",
+        "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4625"
+      ]
+    ],
+    "bullets": [
+      "Technical references are primary Splunk and Microsoft documentation, reviewed on 12 October 2026.",
+      "Record the installed version, license and actual results when executing the lab.",
+      "No passwords, tokens or production logs are included in the package."
+    ],
+    "tag": "PRACTICAL GUIDE / AUTHENTICATION DETECTION LAB"
+  }
+]

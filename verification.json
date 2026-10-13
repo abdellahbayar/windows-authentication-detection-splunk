@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "scope": "Offline Python reference and static checks; SPL has not been executed in Splunk",
+  "fixture_events": 55,
+  "expected_hits": 2,
+  "scenario_checks": 10,
+  "additional_checks": [
+    "dedup",
+    "threshold",
+    "account case",
+    "missing key",
+    "domain isolation",
+    "XML/config"
+  ],
+  "splunk_runtime_verified": false
+}

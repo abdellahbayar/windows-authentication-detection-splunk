@@ -1,0 +1,104 @@
+[
+  {
+    "page": 1,
+    "characters": 423,
+    "outside_safe_area": 0,
+    "layout": "cover"
+  },
+  {
+    "page": 2,
+    "characters": 1179,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 3,
+    "characters": 953,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 4,
+    "characters": 1556,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 5,
+    "characters": 1593,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 6,
+    "characters": 1289,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 7,
+    "characters": 1405,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 8,
+    "characters": 1170,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 9,
+    "characters": 1836,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 10,
+    "characters": 1341,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 11,
+    "characters": 979,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 12,
+    "characters": 1193,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 13,
+    "characters": 1652,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 14,
+    "characters": 1349,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 15,
+    "characters": 1469,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 16,
+    "characters": 1381,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  },
+  {
+    "page": 17,
+    "characters": 1199,
+    "outside_safe_area": 0,
+    "layout": "guide"
+  }
+]

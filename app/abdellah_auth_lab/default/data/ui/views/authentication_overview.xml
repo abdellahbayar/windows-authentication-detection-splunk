@@ -1,0 +1,102 @@
+<?xml version='1.0' encoding='utf-8'?>
+<dashboard version="1.1" theme="dark">
+  <label>Windows Authentication | SYNTHETIC LAB</label>
+  <description>55 generated records; expected results, not production incidents. UTC recommended. Fixed historical run.</description>
+  <row>
+    <panel>
+      <title>Synthetic events (expected: 55)</title>
+      <single>
+        <search>
+          <query>index=lab_windows_auth sourcetype="lab:windows:auth:json" synthetic=true run_id="lab-auth-20261008" | stats count</query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+      </single>
+    </panel>
+    <panel>
+      <title>Failed logons (expected: 46)</title>
+      <single>
+        <search>
+          <query>index=lab_windows_auth sourcetype="lab:windows:auth:json" synthetic=true run_id="lab-auth-20261008" EventCode=4625 | stats count</query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+      </single>
+    </panel>
+    <panel>
+      <title>Successful logons (expected: 9)</title>
+      <single>
+        <search>
+          <query>index=lab_windows_auth sourcetype="lab:windows:auth:json" synthetic=true run_id="lab-auth-20261008" EventCode=4624 | stats count</query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+      </single>
+    </panel>
+    <panel>
+      <title>Detection matches (expected: 2)</title>
+      <single>
+        <search>
+          <query>index=lab_windows_auth sourcetype="lab:windows:auth:json" synthetic=true run_id="lab-auth-20261008" (EventCode=4624 OR EventCode=4625)
+| eval EventCode=tonumber(EventCode), LogonType=tonumber(LogonType), target_user=lower(TargetUserName), target_domain=lower(TargetDomainName)
+| where isnotnull(Computer) AND isnotnull(target_user) AND isnotnull(target_domain) AND isnotnull(SourceIp) AND SourceIp!="" AND SourceIp!="-" AND isnotnull(LogonType)
+| dedup run_id Computer EventRecordID
+| sort 0 +_time +EventRecordID
+| streamstats current=f time_window=5m count(eval(EventCode=4625)) AS failures_before_success min(eval(if(EventCode=4625,_time,null()))) AS first_failure BY run_id Computer target_domain target_user SourceIp LogonType
+| where EventCode=4624 AND failures_before_success&gt;=5
+| eval success_epoch=_time, window_seconds=round(_time-first_failure,0), detection_id=run_id.":".Computer.":".EventRecordID
+| table _time first_failure Computer TargetDomainName TargetUserName SourceIp LogonType failures_before_success window_seconds EventRecordID detection_id scenario_id run_id | stats count</query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Authentication timeline</title>
+      <chart>
+        <search>
+          <query>index=lab_windows_auth sourcetype="lab:windows:auth:json" synthetic=true run_id="lab-auth-20261008" | timechart span=5m count BY EventCode</query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">column</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Candidates for triage</title>
+      <table>
+        <search>
+          <query>index=lab_windows_auth sourcetype="lab:windows:auth:json" synthetic=true run_id="lab-auth-20261008" (EventCode=4624 OR EventCode=4625)
+| eval EventCode=tonumber(EventCode), LogonType=tonumber(LogonType), target_user=lower(TargetUserName), target_domain=lower(TargetDomainName)
+| where isnotnull(Computer) AND isnotnull(target_user) AND isnotnull(target_domain) AND isnotnull(SourceIp) AND SourceIp!="" AND SourceIp!="-" AND isnotnull(LogonType)
+| dedup run_id Computer EventRecordID
+| sort 0 +_time +EventRecordID
+| streamstats current=f time_window=5m count(eval(EventCode=4625)) AS failures_before_success min(eval(if(EventCode=4625,_time,null()))) AS first_failure BY run_id Computer target_domain target_user SourceIp LogonType
+| where EventCode=4624 AND failures_before_success&gt;=5
+| eval success_epoch=_time, window_seconds=round(_time-first_failure,0), detection_id=run_id.":".Computer.":".EventRecordID
+| table _time first_failure Computer TargetDomainName TargetUserName SourceIp LogonType failures_before_success window_seconds EventRecordID detection_id scenario_id run_id</query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Scenario coverage</title>
+      <table>
+        <search>
+          <query>index=lab_windows_auth sourcetype="lab:windows:auth:json" synthetic=true run_id="lab-auth-20261008"
+| stats count AS events count(eval(EventCode=4625)) AS failures count(eval(EventCode=4624)) AS successes BY scenario_id
+| sort scenario_id</query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+      </table>
+    </panel>
+  </row>
+</dashboard>
